@@ -1,0 +1,34 @@
+{
+    "name": "plattry/network",
+    "description": "The plattry network package",
+    "keywords": [
+        "plattry",
+        "network",
+        "socket",
+        "libev",
+        "event driven"
+    ],
+    "type": "library",
+    "license": "GPL-3.0",
+    "autoload": {
+        "psr-4": {
+            "Plattry\\Network\\": "src/"
+        },
+        "exclude-from-classmap": [
+          "/test/"
+        ]
+    },
+    "authors": [
+        {
+            "name": "Andrew Lee",
+            "email": "sixser@foxmail.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {
+        "php": "^8.0",
+        "ext-ev": "*",
+        "ext-pcntl": "*",
+        "plattry/utils": "^0.1.0"
+    }
+}
