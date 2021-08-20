@@ -29,6 +29,6 @@
         "php": "^8.0",
         "ext-ev": "*",
         "ext-pcntl": "*",
-        "plattry/utils": "^0.1.0"
+        "plattry/utils": "<1.0"
     }
 }
