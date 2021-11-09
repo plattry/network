@@ -8,7 +8,6 @@ use Plattry\Network\Connection\Tcp;
 
 /**
  * Trait SignalTrait
- * @package Plattry\Network
  * @method pause() void
  */
 trait SignalTrait
@@ -21,7 +20,7 @@ trait SignalTrait
     /**
      * Install signal event.
      */
-    protected function installSignal()
+    protected function installSignal(): void
     {
         !isset($this->sigQuit) &&
         $this->sigQuit = new \EvSignal(SIGQUIT, [$this, 'handleSigQuit']);
@@ -30,7 +29,7 @@ trait SignalTrait
     /**
      * SIGQUIT event.
      */
-    protected function handleSigQuit()
+    protected function handleSigQuit(): void
     {
         $this->pause();
 

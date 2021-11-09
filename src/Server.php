@@ -4,57 +4,55 @@ declare(strict_types=1);
 
 namespace Plattry\Network;
 
-use Plattry\Network\Connection\EventTrait;
+use Plattry\Dispatcher\DispatcherAwareTrait;
 use Plattry\Network\Connection\Tcp;
-use Plattry\Network\Exception\SocketException;
-use Plattry\Network\Protocol\ProtocolTrait;
+use Plattry\Network\Protocol\ProtocolAwareTrait;
 use Plattry\Utils\Debug;
 use Throwable;
 
 /**
- * Class Server
- * @package Plattry\Network
+ * Network server for receiving and sending packets.
  */
 class Server
 {
-    use EventTrait;
-
-    use ProtocolTrait;
-
+    use DispatcherAwareTrait;
+    use ProtocolAwareTrait;
     use SignalTrait;
 
     /**
-     * Local ip to listen
+     * @var string|null
      */
-    protected string|null $ip = null;
+    protected ?string $ip = null;
 
     /**
-     * Local port to listen
+     * @var int|null
      */
-    protected int|null $port = null;
+    protected ?int $port = null;
 
     /**
-     * The type of transport protocol
+     * The type of transport protocol(tcp, udp)
+     * @var string|null
      */
-    protected string|null $transport = null;
+    protected ?string $transport = null;
 
     /**
-     * Resource of socket context
+     * Socket context
+     * @var mixed|resource|null
      */
     protected mixed $context = null;
 
     /**
-     * Resource of socket
+     * Socket
+     * @var mixed|null
      */
     protected mixed $fd = null;
 
     /**
      * IO Event watcher
      */
-    protected \EvIo|null $watcher = null;
+    protected ?\EvIo $watcher = null;
 
     /**
-     * Server constructor.
      * @param string $ip
      * @param int $port
      * @param string $transport
@@ -86,7 +84,7 @@ class Server
      * @param string $address
      * @param mixed $context
      * @return mixed
-     * @throws SocketException
+     * @throws \RuntimeException
      */
     protected function bind(string $address, mixed $context): mixed
     {
@@ -95,7 +93,7 @@ class Server
         $fd = stream_socket_server($address, $errno, $msg, $flags, $context);
 
         !is_resource($fd) &&
-        throw new SocketException("Failed to listen $address, code: $errno, msg: $msg");
+        throw new \RuntimeException("Failed to listen $address, code: $errno, msg: $msg");
 
         stream_set_blocking($fd, false);
 
@@ -103,18 +101,17 @@ class Server
     }
 
     /**
-     * Start to listen.
-     * @throws SocketException
+     * Start to listen port.
      */
     public function listen(): void
     {
         $address = sprintf("%s://%s:%d", $this->transport, $this->ip, $this->port);
 
         !is_resource($this->fd) &&
-        ($this->fd = $this->bind($address, $this->context));
+        $this->fd = $this->bind($address, $this->context);
 
         is_null($this->watcher) &&
-        ($this->watcher = \EvIo::createStopped($this->fd, \Ev::READ, [$this, "acceptTcp"]));
+        $this->watcher = \EvIo::createStopped($this->fd, \Ev::READ, [$this, "acceptTcp"]);
 
         $this->watcher->start();
 
@@ -124,8 +121,7 @@ class Server
     }
 
     /**
-     * Pause to listen.
-     * @return void
+     * Pause to listen port.
      */
     public function pause(): void
     {
@@ -134,7 +130,6 @@ class Server
 
     /**
      * Establish tcp connection and transmit data.
-     * @return void
      */
     protected function acceptTcp(): void
     {
@@ -151,7 +146,7 @@ class Server
 
         try {
             $connection = new Tcp($fd, $attribute);
-            $connection->setEvent($this->event);
+            $connection->setDispatcher($this->dispatcher);
             $connection->setProtocol($this->protocol);
             $connection->resume();
         } catch (Throwable $t) {

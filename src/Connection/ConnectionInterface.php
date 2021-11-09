@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace Plattry\Network\Connection;
 
 /**
- * Interface ConnectionInterface
- * @package Plattry\Network\Connection
+ * An instance of a socket connection.
  */
 interface ConnectionInterface
 {
@@ -21,18 +20,16 @@ interface ConnectionInterface
      * @param int|null $length
      * @return string
      */
-    public function receive(int|null $length = null): string;
+    public function receive(?int $length = null): string;
 
     /**
      * Send data to output buffer.
      * @param string $data
-     * @return void
      */
     public function send(string $data): void;
 
     /**
-     * Close connection.
-     * @return void
+     * Close socket and destroy connection.
      */
     public function close(): void;
 }

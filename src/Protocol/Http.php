@@ -7,8 +7,7 @@ namespace Plattry\Network\Protocol;
 use Plattry\Network\Connection\ConnectionInterface;
 
 /**
- * Class Http
- * @package Plattry\Network\Protocol
+ * Instance of HTTP.
  */
 class Http implements ProtocolInterface
 {

@@ -4,64 +4,69 @@ declare(strict_types=1);
 
 namespace Plattry\Network\Connection;
 
-use Plattry\Network\Protocol\ProtocolTrait;
+use Plattry\Dispatcher\DispatcherAwareTrait;
+use Plattry\Network\Event\EventFactory;
+use Plattry\Network\Protocol\ProtocolAwareTrait;
 use Plattry\Utils\Debug;
 use Throwable;
 
 /**
- * Class Tcp
- * @package Plattry\Network\Connection
+ * Instance of TCP connection.
  */
 class Tcp implements ConnectionInterface
 {
-    use EventTrait;
+    use DispatcherAwareTrait;
+    use ProtocolAwareTrait;
 
-    use ProtocolTrait;
+    const STATUS_CLOSED = 0;
+    const STATUS_CONNECTED = 1;
 
     /**
-     * All connections
-     * @var static[]
+     * All connections.
+     * @var array
      */
     protected static array $pool = [];
 
     /**
-     * Buffer size
      * @var int
      */
     protected static int $buffer_size = 65535;
 
     /**
-     * Connection resource
+     * @var int
+     */
+    protected int $status = self::STATUS_CLOSED;
+
+    /**
      * @var mixed
      */
     protected mixed $fd;
 
     /**
-     * Connection attribute
+     * Connection attribute.
      * @var array
      */
     protected array $attribute;
 
     /**
-     * The length of current packet
+     * The length of current packet.
      * @var int
      */
     protected int $packet = 0;
 
     /**
-     * The read event watcher
+     * The read event watcher.
      * @var \EvIo|null
      */
-    protected \EvIo|null $reader;
+    protected ?\EvIo $reader;
 
     /**
-     * The write event watcher
+     * The write event watcher.
      * @var \EvIo|null
      */
-    protected \EvIo|null $writer;
+    protected ?\EvIo $writer;
 
     /**
-     * Tcp constructor.
      * @param mixed $fd
      * @param array $attribute
      */
@@ -77,13 +82,18 @@ class Tcp implements ConnectionInterface
 
         $this->reader = \EvIo::createStopped($this->fd, \Ev::READ, [$this, "read"], "");
         $this->writer = \EvIo::createStopped($this->fd, \Ev::WRITE, [$this, "write"], "");
+    }
 
-        $this->event && $this->event->trigger(Event::CONNECT);
+    /**
+     * @return int
+     */
+    public function getStatus(): int
+    {
+        return $this->status;
     }
 
     /**
      * Suspend receiving data.
-     * @return void
      */
     public function pause(): void
     {
@@ -93,10 +103,16 @@ class Tcp implements ConnectionInterface
 
     /**
      * Resume receiving data.
-     * @return void
      */
     public function resume(): void
     {
+        if ($this->status === self::STATUS_CLOSED) {
+            !is_null($this->dispatcher) &&
+            $this->dispatcher->dispatch(EventFactory::createConnectEvent($this));
+
+            $this->status = self::STATUS_CONNECTED;
+        }
+
         $this->reader->start();
 
         if ($this->writer->data !== '') {
@@ -106,9 +122,8 @@ class Tcp implements ConnectionInterface
 
     /**
      * Handler of reader.
-     * @param \EvIo   $ev
-     * @param integer $event
-     * @return void
+     * @param \EvIo $ev
+     * @param int $event
      */
     protected function read(\EvIo $ev, int $event = \Ev::READ): void
     {
@@ -125,7 +140,8 @@ class Tcp implements ConnectionInterface
             $this->reader->data .= $buffer;
 
             if (is_null($this->protocol)) {
-                $this->event && $this->event->trigger(Event::MESSAGE, $this);
+                !is_null($this->dispatcher) &&
+                $this->dispatcher->dispatch(EventFactory::createMessageEvent($this));
 
                 $this->reader->data = "";
 
@@ -141,7 +157,8 @@ class Tcp implements ConnectionInterface
             }
 
             if (strlen($this->reader->data) >= $this->packet) {
-                $this->event && $this->event->trigger(Event::MESSAGE, $this);
+                !is_null($this->dispatcher) &&
+                $this->dispatcher->dispatch(EventFactory::createMessageEvent($this));
 
                 $this->reader->data = substr($this->reader->data, $this->packet + 1);
 
@@ -154,9 +171,8 @@ class Tcp implements ConnectionInterface
 
     /**
      * Handler of writer.
-     * @param \EvIo   $ev
-     * @param integer $event
-     * @return void
+     * @param \EvIo $ev
+     * @param int $event
      */
     protected function write(\EvIo $ev, int $event = \Ev::WRITE): void
     {
@@ -164,8 +180,8 @@ class Tcp implements ConnectionInterface
             $length = fwrite($ev->fd, $this->writer->data, 8192);
             if (false === $length) {
                 if (!is_resource($this->fd) || feof($this->fd)) {
-                    $this->event && $this->event->trigger(Event::ERROR);
-                    $this->close();
+                    !is_null($this->dispatcher) &&
+                    $this->dispatcher->dispatch(EventFactory::createErrorEvent($this));
                 }
 
                 return;
@@ -191,7 +207,7 @@ class Tcp implements ConnectionInterface
     /**
      * @inheritDoc
      */
-    public function receive(int|null $length = null): string
+    public function receive(?int $length = null): string
     {
         if (is_int($length)) {
             return substr($this->reader->data, 0, $length);
@@ -223,13 +239,16 @@ class Tcp implements ConnectionInterface
 
         fclose($this->fd);
 
-        $this->event && $this->event->trigger(Event::CLOSE);
+        $this->status = self::STATUS_CLOSED;
+
+        !is_null($this->dispatcher) &&
+        $this->dispatcher->dispatch(EventFactory::createCloseEvent($this));
 
         unset(static::$pool[spl_object_id($this)]);
     }
 
     /**
-     * @return static[]
+     * @return array
      */
     public static function getPool(): array
     {

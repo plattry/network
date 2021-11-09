@@ -7,8 +7,7 @@ namespace Plattry\Network\Protocol;
 use Plattry\Network\Connection\ConnectionInterface;
 
 /**
- * Interface ProtocolInterface
- * @package Plattry\Network\Protocol
+ * Protocol instance for processing messages.
  */
 interface ProtocolInterface
 {
