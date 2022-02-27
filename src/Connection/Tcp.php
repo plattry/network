@@ -18,8 +18,22 @@ class Tcp implements ConnectionInterface
     use DispatcherAwareTrait;
     use ProtocolAwareTrait;
 
-    const STATUS_CLOSED = 0;
-    const STATUS_CONNECTED = 1;
+    /**
+     * Connection status.
+     */
+    public const STATUS_CLOSED = 0;
+    public const STATUS_CONNECTED = 1;
+
+    /**
+     * Connection default attributes.
+     */
+    protected const ATTRIBUTE_DEFAULT = [
+        self::ATTRIBUTE_ID => null,
+        self::ATTRIBUTE_LOCAL_IP => null,
+        self::ATTRIBUTE_LOCAL_PORT => null,
+        self::ATTRIBUTE_REMOTE_IP => null,
+        self::ATTRIBUTE_REMOTE_PORT => null
+    ];
 
     /**
      * All connections.
@@ -46,7 +60,7 @@ class Tcp implements ConnectionInterface
      * Connection attribute.
      * @var array
      */
-    protected array $attribute;
+    protected array $attribute = self::ATTRIBUTE_DEFAULT;
 
     /**
      * The length of current packet.
@@ -68,18 +82,31 @@ class Tcp implements ConnectionInterface
 
     /**
      * @param mixed $fd
-     * @param array $attribute
+     * @param string $remote_address
      */
-    public function __construct(mixed $fd, array $attribute = [])
+    public function __construct(mixed $fd, string $remote_address)
     {
-        static::$pool[spl_object_id($this)] = $this;
+        // Init connection unique id
+        $id = spl_object_id($this);
 
+        static::$pool[$id] = $this;
+
+        // Init socket
         $this->fd = $fd;
         stream_set_blocking($this->fd, false);
         stream_set_read_buffer($this->fd, 0);
 
-        $this->attribute = $attribute;
+        // Init attributes
+        $local_address = (string) stream_socket_get_name($this->fd, false);
+        $local_split_pos = strpos($local_address, ':');
+        $remote_split_pos = strpos($remote_address, ':');
+        $this->attribute[self::ATTRIBUTE_ID] = $id;
+        $this->attribute[self::ATTRIBUTE_LOCAL_IP] = substr($local_address, 0, $local_split_pos++);
+        $this->attribute[self::ATTRIBUTE_LOCAL_PORT] = substr($local_address, $local_split_pos);
+        $this->attribute[self::ATTRIBUTE_REMOTE_IP] = substr($remote_address, 0, $remote_split_pos++);
+        $this->attribute[self::ATTRIBUTE_REMOTE_PORT] = substr($remote_address, $remote_split_pos);
 
+        // Init reader and writer
         $this->reader = \EvIo::createStopped($this->fd, \Ev::READ, [$this, "read"], "");
         $this->writer = \EvIo::createStopped($this->fd, \Ev::WRITE, [$this, "write"], "");
     }

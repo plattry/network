@@ -7,7 +7,7 @@ namespace Plattry\Network;
 use Plattry\Network\Connection\Tcp;
 
 /**
- * Trait SignalTrait
+ * Trait SignalTrait.
  * @method pause() void
  */
 trait SignalTrait

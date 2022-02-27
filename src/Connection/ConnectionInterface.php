@@ -10,6 +10,15 @@ namespace Plattry\Network\Connection;
 interface ConnectionInterface
 {
     /**
+     * Connection attribute name
+     */
+    public const ATTRIBUTE_ID = 'ID';
+    public const ATTRIBUTE_LOCAL_IP = 'LOCAL_IP';
+    public const ATTRIBUTE_LOCAL_PORT = 'LOCAL_PORT';
+    public const ATTRIBUTE_REMOTE_IP = 'REMOTE_IP';
+    public const ATTRIBUTE_REMOTE_PORT = 'REMOTE_PORT';
+
+    /**
      * Get connection attribute.
      * @return array
      */

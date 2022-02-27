@@ -30,25 +30,25 @@ class Server
     protected ?int $port = null;
 
     /**
-     * The type of transport protocol(tcp, udp)
+     * The type of transport protocol(tcp, udp).
      * @var string|null
      */
     protected ?string $transport = null;
 
     /**
-     * Socket context
+     * Socket context.
      * @var mixed|resource|null
      */
     protected mixed $context = null;
 
     /**
-     * Socket
+     * Socket.
      * @var mixed|null
      */
     protected mixed $fd = null;
 
     /**
-     * IO Event watcher
+     * IO Event watcher.
      */
     protected ?\EvIo $watcher = null;
 
@@ -133,19 +133,11 @@ class Server
      */
     protected function acceptTcp(): void
     {
-        $fd = stream_socket_accept($this->fd, 0, $client);
+        $fd = stream_socket_accept($this->fd, 0, $remote_address);
         stream_set_blocking($fd, false);
 
-        $splitPos = strpos($client, ':');
-        $attribute = [
-            'LOCAL_IP' => $this->ip,
-            'LOCAL_PORT' => $this->port,
-            'REMOTE_IP' => substr($client, 0, $splitPos),
-            'REMOTE_PORT' => substr($client, $splitPos + 1)
-        ];
-
         try {
-            $connection = new Tcp($fd, $attribute);
+            $connection = new Tcp($fd, $remote_address);
             $connection->setDispatcher($this->dispatcher);
             $connection->setProtocol($this->protocol);
             $connection->resume();
